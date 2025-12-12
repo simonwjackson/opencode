@@ -10,6 +10,7 @@ import { SessionPrompt } from "../session/prompt"
 import { iife } from "@/util/iife"
 import { defer } from "@/util/defer"
 import { Config } from "../config/config"
+import { Plugin } from "@/plugin"
 
 export const TaskTool = Tool.define("task", async () => {
   const agents = await Agent.list().then((x) => x.filter((a) => a.mode !== "primary"))
@@ -33,9 +34,15 @@ export const TaskTool = Tool.define("task", async () => {
       const session = await iife(async () => {
         if (params.session_id) {
           const found = await Session.get(params.session_id).catch(() => {})
-          if (found) return found
+          if (found) {
+            // Resuming existing subagent session
+            const context = await Plugin.triggerSessionStart(found.id, "resume")
+            if (context) Session.setPendingContext(found.id, context)
+            return found
+          }
         }
-
+        // Creating new subagent session
+        // Note: Session.create() already triggers session.start hook with "startup"
         return await Session.create({
           parentID: ctx.sessionID,
           title: params.description + ` (@${agent.name} subagent)`,

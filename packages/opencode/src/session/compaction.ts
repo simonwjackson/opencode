@@ -17,6 +17,7 @@ import { ProviderTransform } from "@/provider/transform"
 import { SessionProcessor } from "./processor"
 import { fn } from "@/util/fn"
 import { mergeDeep, pipe } from "remeda"
+import { Plugin } from "@/plugin"
 
 export namespace SessionCompaction {
   const log = Log.create({ service: "session.compaction" })
@@ -227,6 +228,15 @@ export namespace SessionCompaction {
     }
     if (processor.message.error) return "stop"
     Bus.publish(Event.Compacted, { sessionID: input.sessionID })
+
+    // Fire session.start hook with "compact" trigger
+    try {
+      const context = await Plugin.triggerSessionStart(input.sessionID, "compact")
+      if (context) Session.setPendingContext(input.sessionID, context)
+    } catch {
+      // Ignore errors during compact hook
+    }
+
     return "continue"
   }
 

@@ -69,6 +69,15 @@ export namespace Plugin {
     return output
   }
 
+  export async function triggerSessionStart(
+    sessionID: string,
+    hookTrigger: "startup" | "resume" | "compact",
+  ): Promise<string | undefined> {
+    const output: { additionalContext?: string } = {}
+    await trigger("session.start", { sessionID, trigger: hookTrigger }, output)
+    return output.additionalContext
+  }
+
   export async function list() {
     return state().then((x) => x.hooks)
   }

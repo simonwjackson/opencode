@@ -463,12 +463,7 @@ export function Prompt(props: PromptProps) {
       promptModelWarning()
       return
     }
-    const sessionID = props.sessionID
-      ? props.sessionID
-      : await (async () => {
-          const sessionID = await sdk.client.session.create({}).then((x) => x.data!.id)
-          return sessionID
-        })()
+    const sessionID = props.sessionID ? props.sessionID : await sdk.client.session.create({}).then((x) => x.data!.id)
     const messageID = Identifier.ascending("message")
     let inputText = store.prompt.input
 
@@ -554,6 +549,7 @@ export function Prompt(props: PromptProps) {
         route.navigate({
           type: "session",
           sessionID,
+          isNew: true,
         })
       }, 50)
     input.clear()
