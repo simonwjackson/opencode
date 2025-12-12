@@ -189,4 +189,20 @@ export interface Hooks {
     input: { sessionID: string; messageID: string; partID: string },
     output: { text: string },
   ) => Promise<void>
+  /**
+   * Called when a session starts (fresh start, resume, or after compaction).
+   * Allows plugins to inject context into the session.
+   */
+  "session.start"?: (
+    input: {
+      /** The session ID */
+      sessionID: string
+      /** What triggered this hook */
+      trigger: "startup" | "resume" | "compact"
+    },
+    output: {
+      /** Context to inject into the session's first message */
+      additionalContext?: string
+    },
+  ) => Promise<void>
 }

@@ -1106,6 +1106,23 @@ export namespace SessionPrompt {
       }),
     ).then((x) => x.flat())
 
+    // Inject pending context from session.start hook
+    const pendingCtx = Session.consumePendingContext(input.sessionID)
+    if (pendingCtx) {
+      parts.unshift({
+        id: Identifier.ascending("part"),
+        messageID: info.id,
+        sessionID: input.sessionID,
+        type: "text",
+        text: pendingCtx,
+        synthetic: true,
+        time: {
+          start: Date.now(),
+          end: Date.now(),
+        },
+      })
+    }
+
     await Plugin.trigger(
       "chat.message",
       {

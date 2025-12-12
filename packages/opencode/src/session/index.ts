@@ -1,5 +1,6 @@
 import { BusEvent } from "@/bus/bus-event"
 import { Bus } from "@/bus"
+import { Plugin } from "@/plugin"
 import { Decimal } from "decimal.js"
 import z from "zod"
 import { type LanguageModelUsage, type ProviderMetadata } from "ai"
@@ -119,6 +120,12 @@ export namespace Session {
         error: MessageV2.Assistant.shape.error,
       }),
     ),
+    Resumed: BusEvent.define(
+      "session.resumed",
+      z.object({
+        info: Info,
+      }),
+    ),
   }
 
   export const create = fn(
@@ -206,12 +213,25 @@ export namespace Session {
     Bus.publish(Event.Updated, {
       info: result,
     })
+    // Fire session.start hook with "startup" trigger for new sessions
+    try {
+      const context = await Plugin.triggerSessionStart(result.id, "startup")
+      if (context) setPendingContext(result.id, context)
+    } catch {
+      // Ignore errors during startup hook
+    }
     return result
   }
 
   export const get = fn(Identifier.schema("session"), async (id) => {
     const read = await Storage.read<Info>(["session", Instance.project.id, id])
     return read as Info
+  })
+
+  export const resume = fn(Identifier.schema("session"), async (sessionID) => {
+    const session = await get(sessionID)
+    Bus.publish(Event.Resumed, { info: session })
+    return session
   })
 
   export const getShare = fn(Identifier.schema("session"), async (id) => {
@@ -448,4 +468,22 @@ export namespace Session {
       })
     },
   )
+
+  // Pending context storage for session.start hook
+  const pendingContext = new Map<string, string>()
+
+  export function setPendingContext(sessionID: string, context: string) {
+    const existing = pendingContext.get(sessionID)
+    if (existing) {
+      pendingContext.set(sessionID, existing + "\n\n" + context)
+    } else {
+      pendingContext.set(sessionID, context)
+    }
+  }
+
+  export function consumePendingContext(sessionID: string): string | undefined {
+    const context = pendingContext.get(sessionID)
+    if (context) pendingContext.delete(sessionID)
+    return context
+  }
 }
